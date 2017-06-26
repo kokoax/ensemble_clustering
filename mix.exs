@@ -31,6 +31,7 @@ defmodule EnsembleClustering.Mixfile do
     [
       {:httpoison, "~> 0.11.1"},
       {:floki, "~> 0.17.0"},
+      {:uci_data_loader, "~> 0.1.0"},
     ]
   end
 end

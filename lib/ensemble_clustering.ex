@@ -1,69 +1,3 @@
-defmodule UCIDataLoader do
-  defstruct [:data, :target_all_name, :target_names, :length, :amount, :each_amount]
-  def load_iris do
-    iris_url = "http://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"
-    %HTTPoison.Response{status_code: 200, body: body} = iris_url |> HTTPoison.get!
-    all_data = Regex.split(~r"\R", body)
-      |> Enum.map(&(&1 |> String.split(",")))
-    all_data = all_data
-      |> Enum.slice(0,(all_data |> Enum.count)-2)
-    %UCIDataLoader{
-      data:            all_data |> Enum.map(&(&1 |> Enum.slice(0,4))) |> Enum.map(&(&1 |> to_float)),
-      target_all_name: all_data |> Enum.map(&(&1 |> Enum.at(-1))),
-      target_names:    all_data |> Enum.map(&(&1 |> Enum.at(-1))) |> Enum.uniq,
-      length:   4,
-      amount: 150,
-      each_amount:     [50,50,50]
-    }
-  end
-  def load_wine do
-    wine_url = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
-    %HTTPoison.Response{status_code: 200, body: body} = wine_url |> HTTPoison.get!
-    all_data = Regex.split(~r"\R", body)
-      |> Enum.map(&(&1 |> String.split(";")))
-    all_data = all_data
-      |> Enum.slice(1,(all_data |> Enum.count)-2)
-
-    target_all_name = all_data |> Enum.map(&(&1 |> Enum.at(-1))) |> IO.inspect
-    target_names    = all_data |> Enum.map(&(&1 |> Enum.at(-1))) |> Enum.uniq |> IO.inspect
-    all_data |> Enum.map(&(&1 |> Enum.slice(0,11))) |> Enum.map(&(&1 |> to_float)) |> IO.inspect
-    %UCIDataLoader{
-      data:            all_data |> Enum.map(&(&1 |> Enum.slice(0,11))) |> Enum.map(&(&1 |> to_float)),
-      target_all_name: target_all_name,
-      target_names:    target_names,
-      length:   11,
-      amount: 4898,
-      each_amount:     get_each_amount(target_names,target_all_name),
-    }
-  end
-  def sampling_with_replace(datasets, n) do
-    rands = 1..n |> Enum.map(fn(_) -> (:rand.uniform(datasets.amount)-1) end)
-    target_all_name = rands |> Enum.map(&(datasets.target_all_name |> Enum.at(&1)))
-    target_names    = rands |> Enum.map(&(datasets.target_all_name |> Enum.at(&1))) |> Enum.uniq
-    %UCIDataLoader{
-      data:            rands |> Enum.map(&(datasets.data |> Enum.at(&1))),
-      target_all_name: target_all_name,
-      target_names:    target_names,
-      length:   datasets.length,
-      amount:   n,
-      each_amount:     get_each_amount(target_names,target_all_name),
-    }
-  end
-  defp get_each_amount(target_names, target_all_name) do
-    target_names
-      |> Enum.map(
-        fn(name) ->
-          target_all_name
-            |> Enum.filter(&(&1 == name))
-            |> Enum.count
-        end
-      )
-  end
-  defp to_float(data) do
-    data |> Enum.map(&(&1 |> Code.eval_string |> elem(0)))
-  end
-end
-
 defmodule KNN do
   def knn({datasets, data}) do
     Enum.zip(datasets.data, datasets.target_all_name)
@@ -90,8 +24,8 @@ defmodule KNN do
     num = num + 1
   end
   defp dist(x, y) do
-    IO.inspect x
-    IO.inspect y
+    # IO.inspect x
+    # IO.inspect y
     Enum.zip(x,y)
       |> Enum.map(&((&1 |> elem(0)) - (&1 |> elem(1))))
       |> Enum.map(&(&1 |> :math.pow(2)))
@@ -212,10 +146,16 @@ defmodule ID3 do
 end
 
 defmodule EnsembleClustering do
+  # iris set
+  @sample   30
+  @test_num 10
+
+  # wine quality set
+  # @sample 320
+  # @test_num 41
   def test(datasets) do
-    n = 10
     datasets
-      |> get_test_data(n)
+      |> get_test_data(@test_num)
       |> Enum.map(
         fn(test_dataset) ->
           test_dataset
@@ -227,11 +167,11 @@ defmodule EnsembleClustering do
             )
             |> Enum.filter(&(&1 == true))
             |> Enum.count
-            |> frac(n)
+            |> frac(@test_num)
         end
       )
       |> Enum.sum
-      |> frac(datasets.amount/n)
+      |> frac(datasets.amount/@test_num)
   end
   defp frac(x, y) do
     x / y
@@ -251,7 +191,7 @@ defmodule EnsembleClustering do
     knn_results = 1..10
       |> Enum.map(
         fn(_) ->
-          {UCIDataLoader.sampling_with_replace(datasets,30),data |> elem(0)}
+          {UCIDataLoader.sampling_with_replace(datasets,@sample),data |> elem(0)}
             |> KNN.knn
         end
       )
@@ -259,7 +199,7 @@ defmodule EnsembleClustering do
     nb_results  = 1..10
       |> Enum.map(
         fn(_) ->
-          {UCIDataLoader.sampling_with_replace(datasets,30),data |> elem(0)}
+          {UCIDataLoader.sampling_with_replace(datasets,@sample),data |> elem(0)}
             |> NaiveBayes.naivebayes
         end
       )
@@ -284,11 +224,10 @@ defmodule EnsembleClustering do
 end
 
 defmodule Main do
-  def main do
-    # iris = UCIDataLoader.load_iris
-    # iris |> EnsembleClustering.test
-    wine = UCIDataLoader.load_wine
-    wine |> EnsembleClustering.test
+  def main(datasets) do
+    datasets |> EnsembleClustering.test
+    # wine = UCIDataLoader.load_wine_quality
+    # wine |> EnsembleClustering.test
   end
 end
 
