@@ -20,9 +20,6 @@ defmodule KNN do
         end)
       |> Enum.max # TODO: More check detaily
   end
-  defp inc(num) do
-    num = num + 1
-  end
   defp dist(x, y) do
     # IO.inspect x
     # IO.inspect y
@@ -77,6 +74,7 @@ defmodule NaiveBayes do
         end
       )
       |> Enum.zip(datasets.target_names)
+      # |> Enum.zip(datasets.target_names)
       |> Enum.max
   end
   # Iris行列のそれぞれの特徴ごと(列)の平均を計算
@@ -147,12 +145,12 @@ end
 
 defmodule EnsembleClustering do
   # iris set
-  @sample   30
-  @test_num 10
+  # @sample   30
+  # @test_num 10
 
   # wine quality set
-  # @sample 320
-  # @test_num 41
+  @sample 320
+  @test_num 41
   def test(datasets) do
     datasets
       |> get_test_data(@test_num)
